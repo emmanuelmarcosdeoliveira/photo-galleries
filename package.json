@@ -1,0 +1,21 @@
+{
+  "name": "@photo-galleries",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Galerias de Fotos",
+  "keywords": [
+    "React",
+    "Fastify"
+  ],
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
+  },
+  "author": "@emmanuelmarcosdeolivira",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.2",
+  "devDependencies": {
+    "@biomejs/biome": "2.5.2"
+  }
+}
