@@ -1,0 +1,143 @@
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: <> */
+import { zodResolver } from "@hookform/resolvers/zod";
+import React from "react";
+import { useForm } from "react-hook-form";
+import Alert from "../../../components/alert";
+import Button from "../../../components/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogClosed,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTrigger,
+} from "../../../components/dialog";
+import ImagePreview from "../../../components/image-preview";
+import InputSingleFile from "../../../components/input-single-file";
+import InputText from "../../../components/input-text";
+import Skeleton from "../../../components/skeleton";
+import Text from "../../../components/text";
+import useAlbums from "../../albums/hooks/use-albums";
+import usePhoto from "../hooks/use-photo";
+import { type PhotoNewFormSchema, photoNewFormSchema } from "../schemas";
+
+interface PhotoNewDialogProps {
+  trigger: React.ReactNode;
+}
+
+const PhotoNewDialog = ({ trigger }: PhotoNewDialogProps) => {
+  const [modalOpen, setModalOpen] = React.useState(false);
+
+  const form = useForm<PhotoNewFormSchema>({
+    resolver: zodResolver(photoNewFormSchema),
+  });
+  const { albums, isLoadingAlbums } = useAlbums();
+  const { createPhoto } = usePhoto();
+  const [isCreatingPhoto, setIsCreatingPhoto] = React.useTransition();
+
+  const file = form.watch("file");
+  const fileSrc = file?.[0] ? URL.createObjectURL(file[0]) : undefined;
+
+  const albumsIds = form.watch("albumsIds");
+
+  React.useEffect(() => {
+    if (!modalOpen) {
+      form.reset();
+    }
+  }, [modalOpen, form]);
+
+  function handleToggleAlbum(albumId: string) {
+    const albumsIds = form.getValues("albumsIds") || [];
+    const albumsSet = new Set(albumsIds);
+    if (albumsSet.has(albumId)) {
+      albumsSet.delete(albumId);
+    } else {
+      albumsSet.add(albumId);
+    }
+    form.setValue("albumsIds", Array.from(albumsSet));
+  }
+
+  function handleSubmit(payload: PhotoNewFormSchema) {
+    setIsCreatingPhoto(async () => {
+      await createPhoto(payload);
+      setModalOpen(false);
+    });
+  }
+
+  return (
+    <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <DialogHeader>Adicionar foto</DialogHeader>
+          <DialogBody className="flex flex-col gap-5">
+            <InputText
+              placeholder="Adicione um título"
+              maxLength={255}
+              error={form.formState.errors.title?.message}
+              {...form.register("title")}
+            />
+            <Alert>
+              <span className="block">Tamanho máximo: 50MB</span>
+              <span className="text-accent-brand">
+                Você pode selecionar arquivo em PNG,JPG ou, JPEG
+              </span>
+            </Alert>
+            <InputSingleFile
+              form={form}
+              allowedExtensions={["png", "jpg", "jpeg"]}
+              maxFileSizeInMb={50}
+              replaceBy={<ImagePreview src={fileSrc} className="w-full h-56" />}
+              error={form.formState.errors.file?.message}
+              {...form.register("file")}
+            />
+            <div className="space-y-3">
+              <Text variant="label-small">Selecionar álbuns</Text>
+              <div className="flex flex-flex-wrap gap-3">
+                {!isLoadingAlbums &&
+                  albums.length > 0 &&
+                  albums.map((album) => (
+                    <Button
+                      className="truncate"
+                      variant={
+                        albumsIds?.includes(album.id) ? "primary" : "ghost"
+                      }
+                      size="sm"
+                      key={album.id}
+                      onClick={() => handleToggleAlbum(album.id)}
+                    >
+                      {album.title}
+                    </Button>
+                  ))}
+                {isLoadingAlbums &&
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <Skeleton
+                      key={`album-loading${index}`}
+                      className="h-7 w-20"
+                    />
+                  ))}
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClosed asChild>
+              <Button disabled={isCreatingPhoto} variant="secondary">
+                Cancelar
+              </Button>
+            </DialogClosed>
+            <Button
+              disabled={isCreatingPhoto}
+              handling={isCreatingPhoto}
+              type="submit"
+            >
+              {isCreatingPhoto ? "Adicionando..." : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default PhotoNewDialog;
